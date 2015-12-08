@@ -264,7 +264,7 @@ void stateWaiting() {
 		if (digitalRead(detectPin) == 0 && gFlag.bit.isDoorOpened == 0) {
 			delay(100);
 			if (digitalRead(detectPin) == 0) {
-				myComm.sendCMD(MASTER_ADDR, COMM_DOOR_OPENED, 1);
+				myComm.sendCMD(MASTER_ADDR, COMM_GAME_START, 1);
 				gFlag.bit.isDoorOpened = 1;
 			}
 		} else if (digitalRead(detectPin) == 1) {

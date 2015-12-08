@@ -39,6 +39,11 @@ typedef enum {
 	COMM_OPEN_DOOR,
 	COMM_DOOR_OPENED,
 	COMM_TOTLE_PERSON_NUM,
+	COMM_SINGLE_PLAY,
+	COMM_REPEAT_PLAY,
+	COMM_STOP_PLAY,
+	COMM_SET_VOLUME,
+	COMM_GAME_START,
 } _COMM_CMD_TYPE;
 /********Other define**********************************************************************************/
 #define BUZZ_ON 		LOW

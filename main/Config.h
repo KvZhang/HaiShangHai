@@ -42,6 +42,7 @@ typedef enum {
 	COMM_REPEAT_PLAY,
 	COMM_STOP_PLAY,
 	COMM_SET_VOLUME,
+	COMM_GAME_START,
 } _COMM_CMD_TYPE;
 /********Other define**********************************************************************************/
 #define BUZZ_ON 		LOW
