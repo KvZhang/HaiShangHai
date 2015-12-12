@@ -4,45 +4,29 @@
 void initIO() {
 
 #ifdef ON_BOARD_MOS
-	pinMode(output1Pin, OUTPUT);
-	digitalWrite(output1Pin, MOS_INIT_STATE);
-	pinMode(output2Pin, OUTPUT);
-	digitalWrite(output2Pin, MOS_INIT_STATE);
-	pinMode(output3Pin, OUTPUT);
-	digitalWrite(output3Pin, MOS_INIT_STATE);
-	pinMode(output4Pin, OUTPUT);
-	digitalWrite(output4Pin, MOS_INIT_STATE);
-#if ON_BOARD_MOS>4
-	pinMode(output5Pin, OUTPUT);
-	digitalWrite(output5Pin, MOS_INIT_STATE);
-	pinMode(output6Pin, OUTPUT);
-	digitalWrite(output6Pin, MOS_INIT_STATE);
-#if ON_BOARD_MOS>6
-	pinMode(output7Pin,OUTPUT);
-	digitalWrite(output7Pin,MOS_INIT_STATE);
-	pinMode(output8Pin,OUTPUT);
-	digitalWrite(output8Pin,MOS_INIT_STATE);
-#endif
-#endif
+	unsigned char *ptr=(unsigned char *)outputPin;
+	for(unsigned char i=0;i<ON_BOARD_MOS;i++){
+		if(i<6){
+			*(ptr+i)=A0+i;
+		}else if(i==6){
+			*(ptr+i)=7;
+		}else if(i==7){
+			*(ptr+i)=8;
+		}
+		else{
+			break;
+		}
+		pinMode(*(ptr+i),OUTPUT);
+		digitalWrite(*(ptr+i),MOS_INIT_STATE);
+	}
 #endif
 
 #ifdef ON_BOARD_INPUT
-	pinMode(input1Pin, INPUT_PULLUP);
-	pinMode(input2Pin, INPUT_PULLUP);
-#if ON_BOARD_INPUT>2
-	pinMode(input3Pin,INPUT_PULLUP);
-#if ON_BOARD_INPUT>3
-	pinMode(input4Pin,INPUT_PULLUP);
-	pinMode(input5Pin,INPUT_PULLUP);
-#if ON_BOARD_INPUT>5
-	pinMode(input6Pin,INPUT_PULLUP);
-	pinMode(input7Pin,INPUT_PULLUP);
-	pinMode(input8Pin,INPUT_PULLUP);
-	pinMode(input9Pin,INPUT_PULLUP);
-	pinMode(input10Pin,INPUT_PULLUP);
-#endif
-#endif
-#endif
+	ptr=(unsigned char *)inputPin;
+	for(unsigned char i=0;i<ON_BOARD_INPUT;i++){
+		*(ptr+i)=4+i;
+		pinMode(*(ptr+i),INPUT_PULLUP);
+	}
 #endif
 
 #ifdef ON_BOARD_BUZZ
@@ -52,8 +36,8 @@ void initIO() {
 
 #ifdef ON_BOARD_433MHz_SW
 #if ME_ADDRESS==1
-	pinMode(set433Pin, OUTPUT);
-	digitalWrite(set433Pin, HIGH);
+//	pinMode(set433Pin, OUTPUT);
+//	digitalWrite(set433Pin, HIGH);
 #endif
 #endif
 }
@@ -76,6 +60,8 @@ void initVariables() {
 	gState=STATE_WAITING;
 	gameStartMoment=0;
 	totalPlayerNum=8;
+	myCommRevContent.CMD=0xff;
+	myCommRevContent.data=0;
 }
 void resetMyself(void) {
 //	while (1)

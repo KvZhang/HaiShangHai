@@ -62,39 +62,14 @@ LaputaMp3 myMp3;
 
 LaputaTimer myTimer;
 /*************Pin define************************************************************************************/
-const int set433Pin=4;
+//const int set433Pin=4;
+
 #ifdef ON_BOARD_MOS
-const int output1Pin=A0;
-const int output2Pin=A1;
-const int output3Pin=A2;
-const int output4Pin=A3;
-#if ON_BOARD_MOS>4
-const int output5Pin=A4;
-const int output6Pin=A5;
-#if ON_BOARD_MOS>6
-const int output7Pin=7;
-const int output8Pin=8;
-#endif
-#endif
+const volatile char outputPin[ON_BOARD_MOS]={0};
 #endif
 
 #ifdef ON_BOARD_INPUT
-const int input1Pin=4;
-const int input2Pin=5;
-#if ON_BOARD_INPUT>2
-const int input3Pin=6;
-#if ON_BOARD_INPUT>3
-const int input4Pin=7;
-const int input5Pin=8;
-#if ON_BOARD_INPUT>5
-const int input6Pin=9;
-const int input7Pin=10;
-const int input8Pin=11;
-const int input9Pin=12;
-const int input10Pin=13;
-#endif
-#endif
-#endif
+const volatile char inputPin[ON_BOARD_INPUT]={0};
 #endif
 
 #ifdef ON_BOARD_BUZZ
@@ -127,7 +102,7 @@ _RC522_READ_BUFFER RC522ReadBuffer;
 _RC522_WRITE_BUFFER RC522WriteBuffer;
 volatile unsigned char RC522ID[20];
 volatile unsigned char RC522LastID;
-volatile unsigned long RC522ActiveMoment;
+volatile unsigned long RC522ActiveMoment;//this card active moment
 #endif
 volatile unsigned int gameStartMoment;// start time in seconds
 volatile unsigned char totalPlayerNum;//
