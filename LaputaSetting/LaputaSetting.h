@@ -11,6 +11,7 @@
 #include "MFRC522.h"
 #include "SoftwareSerial.h"
 #include "LaputaCommSW.h"
+#include "DefineForHaishanghai.h"
 //end of add your includes here
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +32,7 @@ typedef struct{
 volatile _SERIAL_BUFFER myCommBuffer;
 volatile long settingBRD=9600;
 volatile long commBRD=19200;
-
+_RC522_READ_BUFFER RC522ReadBuffer;
+_RC522_WRITE_BUFFER RC522WriteBuffer;
 //Do not add code below this line
 #endif /* _LaputaSetting_H_ */

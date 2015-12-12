@@ -5,7 +5,230 @@ MFRC522 mfrc522(10, 9);        // Create MFRC522 instance.
 MFRC522::MIFARE_Key key;
 SoftwareSerial settingSerial(2, 3);
 //The setup function is called once at startup of the sketch
+void displayCard() {
+	for (unsigned char i = 0; i < 16; i++) {
+		Serial.print(RC522ReadBuffer.BYTES[i], HEX);
+		Serial.print(' ');
+	}
+	Serial.println(' ');
+	switch (RC522ReadBuffer.fields.cardType) {
+	case CARD_TYPE_NORMAL_PLAYER:
+	case CARD_TYPE_PRIMARY_PLAYER:
+	case CARD_TYPE_SENIOR_PLAYER:
+	case CARD_TYPE_SUPER_PLAYER:
+		Serial.print("Player");
+		Serial.print(" ");
+		Serial.print(RC522ReadBuffer.fields.cardNumber);
+		Serial.print('|');
+		Serial.print("Color->");
+		if (RC522ReadBuffer.fields.cardColour == CARD_COLOR_RED) {
+			Serial.print("RED");
+		} else if (RC522ReadBuffer.fields.cardColour == CARD_COLOR_GREEN) {
+			Serial.print("GREEN");
+		} else if (RC522ReadBuffer.fields.cardColour == CARD_COLOR_BLUE) {
+			Serial.print("BLUE");
+		}
+		Serial.print('|');
+		Serial.print("Lives->");
+		Serial.print(RC522ReadBuffer.fields.totleLifes);
+		Serial.print('|');
+		Serial.print("ActiveLvl->");
+		Serial.print(RC522ReadBuffer.fields.activeTimes);
+		Serial.println(' ');
+		break;
+	case CARD_TYPE_ADMIN:
+	case CARD_TYPE_GAME_MASTER:
+		Serial.print("GameMaster->");
+		if (RC522ReadBuffer.fields.cardCmd == CARD_CMD_RESET_ME) {
+			Serial.print("RESET THIS");
+		} else if (RC522ReadBuffer.fields.cardCmd == CARD_CMD_RESET_ALL) {
+			Serial.print("RESET ALL");
+		} else if (RC522ReadBuffer.fields.cardCmd == CARD_CMD_OPEN_DOOR) {
+			Serial.print("ACTIVE");
+		}
+		Serial.println(' ');
+		break;
+	default:
+		Serial.println("Unknown card");
+		break;
+	}
+}
+void processCMD(unsigned char cmd) {
+	unsigned char num = 0;
+	unsigned char i = 0;
+	unsigned char temp=0;
+	switch (cmd) {
+	case 'T':
+	case 't':
+		temp = Serial.read();
+		if (temp == 'p' || temp == 'P') {
+			RC522ReadBuffer.fields.cardType = CARD_TYPE_NORMAL_PLAYER;
+		} else if (temp == 'g' || temp == 'G') {
+			RC522ReadBuffer.fields.cardType = CARD_TYPE_GAME_MASTER;
+		} else {
+			RC522ReadBuffer.fields.cardType = CARD_TYPE_GAME_MASTER;
+		}
+		break;
+	case 'n':
+	case 'N':
+		num=0;
+		i=0;
+		while (Serial.available()) {
+			temp = Serial.read();
+			if (temp == ' ') {
+				RC522ReadBuffer.fields.cardNumber = 1;
+				break;
+			} else {
+				num = num * 10 * i + temp - '0';
+				i++;
+			}
+		}
+		if (num > 10) {
+			RC522ReadBuffer.fields.cardNumber = 1;
+		} else {
+			RC522ReadBuffer.fields.cardNumber = num;
+		}
+		break;
+	case 'c':
+	case 'C':
+		temp = Serial.read();
+		if (temp == 'R' || temp == 'r') {
+			RC522ReadBuffer.fields.cardColour = CARD_COLOR_RED;
+		} else if (temp == 'B' || temp == 'b') {
+			RC522ReadBuffer.fields.cardColour = CARD_COLOR_BLUE;
+		} else if (temp == 'G' || temp == 'g') {
+			RC522ReadBuffer.fields.cardColour = CARD_COLOR_GREEN;
+		} else {
+			RC522ReadBuffer.fields.cardColour = CARD_COLOR_RED;
+		}
+		break;
+	case 'p':
+	case 'P':
+		temp = Serial.read();
+		if (temp == 'R' || temp == 'r') {
+			RC522ReadBuffer.fields.cardCmd = CARD_CMD_RESET_ME;
+		} else if (temp == 'A' || temp == 'a') {
+			RC522ReadBuffer.fields.cardCmd = CARD_CMD_OPEN_DOOR;
+		} else {
+			RC522ReadBuffer.fields.cardCmd = CARD_CMD_RESET_ME;
+		}
+		break;
+	case 'L':
+	case 'l':
+		num = 0;
+		i = 0;
+		while (Serial.available()) {
+			temp = Serial.read();
+			if (temp == ' ') {
+				RC522ReadBuffer.fields.totleLifes = 10;
+				break;
+			} else {
+				num = num * 10 * i + temp - '0';
+				i++;
+			}
+		}
+		if (num > 100) {
+			RC522ReadBuffer.fields.totleLifes = 10;
+		} else {
+			RC522ReadBuffer.fields.totleLifes = num;
+		}
+		break;
+	case 'a':
+	case 'A':
+		num = 0;
+		i = 0;
+		while (Serial.available()) {
+			temp = Serial.read();
+			if (temp == ' ') {
+				RC522ReadBuffer.fields.activeTimes = 1;
+				break;
+			} else {
+				num = num * 10 * i + temp - '0';
+				i++;
+			}
+		}
+		if (num > 10) {
+			RC522ReadBuffer.fields.activeTimes = 1;
+		} else {
+			RC522ReadBuffer.fields.activeTimes = num;
+		}
+		break;
+	}
 
+}
+
+void clearRC522Buffer(unsigned char block) {
+
+	if (block == READ_BLOCK) {
+		for (byte i = 0; i < sizeof(RC522ReadBuffer); i++) {
+			RC522ReadBuffer.BYTES[i] = 0xff;
+		}
+	} else if (block == WRITE_BLOCK) {
+		for (byte i = 0; i < sizeof(RC522WriteBuffer); i++) {
+			RC522WriteBuffer.BYTES[i] = 0xff;
+		}
+	}
+}
+/******************************************************
+ * Read the read-only area to RC522Buffer and return 0 if success
+ */
+unsigned char readCard() {
+	byte status;
+	byte address = sizeof(RC522ReadBuffer);
+
+	if (!mfrc522.PICC_IsNewCardPresent())
+		return 1;
+
+	if (!mfrc522.PICC_ReadCardSerial())
+		return 2;
+
+	status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A,
+			READ_BLOCK, &key, &(mfrc522.uid));
+	if (status != MFRC522::STATUS_OK)
+		return 3;
+
+	status = mfrc522.MIFARE_Read(READ_BLOCK, &RC522ReadBuffer.BYTES[0],
+			&address);
+	if (status != MFRC522::STATUS_OK)
+		return 4;
+	status = mfrc522.MIFARE_Read(WRITE_BLOCK, &RC522WriteBuffer.BYTES[0],
+			&address);
+	if (status != MFRC522::STATUS_OK)
+		return 5;
+
+	mfrc522.PICC_HaltA(); // Halt PICC
+	mfrc522.PCD_StopCrypto1();  // Stop encryption on PCD
+
+	return 0;
+
+}
+/******************************************************
+ * Write the content of writeBuffer into card data area and return 0 if success
+ * You need modify writeBuffer first,and writeBuffer will be set as 0xff if success
+ */
+unsigned char writeCard() {
+	byte status;
+//	byte address = sizeof(RC522WriteBuffer);
+
+	if (!mfrc522.PICC_WakeupACard())
+		return 1;
+
+	if (!mfrc522.PICC_ReadCardSerial())
+		return 2;
+
+	status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A,
+			WRITE_BLOCK, &key, &(mfrc522.uid));
+	if (status != MFRC522::STATUS_OK)
+		return 3;
+
+	status = mfrc522.MIFARE_Write(WRITE_BLOCK, &RC522WriteBuffer.BYTES[0], 16);
+	if (status != MFRC522::STATUS_OK)
+		return 4;
+	mfrc522.PICC_HaltA(); // Halt PICC
+	mfrc522.PCD_StopCrypto1();  // Stop encryption on PCD
+
+	return 0;
+}
 void setup() {
 // Add your initialization code here
 	pinMode(setPin, OUTPUT);
@@ -172,7 +395,7 @@ void RWRC522() {
 	}
 	Serial.print(" PICC type: ");   // Dump PICC type
 	byte piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
-	Serial.println(mfrc522.PICC_GetTypeName(piccType));
+	Serial.println(piccType);
 	/******************************Set Block Number************************/
 	Serial.println("Put the block number: 0~63 ");
 	while (Serial.available() == 0)
@@ -203,7 +426,7 @@ void RWRC522() {
 			&key, &(mfrc522.uid));
 	if (status != MFRC522::STATUS_OK) {
 		Serial.print("PCD_Authenticate() failed: ");
-		Serial.println(mfrc522.GetStatusCodeName(status));
+		Serial.println(status);
 		return;
 	}
 	/*****************************Set offset************************************/
@@ -243,12 +466,13 @@ void RWRC522() {
 			}
 			if (offset) {
 				Serial.print("The read result is:");
-				Serial.write(buffer[offset]);
+				Serial.print(buffer[offset], HEX);
+				Serial.print(' ');
 				Serial.println("  ");
 			} else {
 				Serial.print("The read result is:");
 				for (unsigned char i = 0; i < 16; i++) {
-					Serial.write(buffer[i]);
+					Serial.print(buffer[offset], HEX);
 					Serial.print(' ');
 				}
 				Serial.println("  ");
@@ -271,7 +495,7 @@ void RWRC522() {
 			if (mfrc522.MIFARE_Write(block, buffer, 16)) {
 				Serial.print("Write Success with : ");
 				for (unsigned char j = 0; j < i; j++) {
-					Serial.write(buffer[j + offset]);
+					Serial.print(buffer[j + offset], HEX);
 					Serial.print(' ');
 				}
 				Serial.println("  ");
@@ -315,7 +539,7 @@ void bootLoader() {
 	}
 	if (myCommBuffer.objTheme > 0 && myCommBuffer.objTheme < 100) {
 		if (myCommBuffer.objAddr > 0 && myCommBuffer.objAddr < 100) {
-			myComm.sendCMD(0, 0, STOP_REPORT, 1);//重要的事情说三遍
+			myComm.sendCMD(0, 0, STOP_REPORT, 1);  //重要的事情说三遍
 			delay(200);
 			myComm.sendCMD(0, 0, STOP_REPORT, 1);
 			delay(200);
@@ -324,25 +548,26 @@ void bootLoader() {
 			myComm.sendCMD(myCommBuffer.objTheme, myCommBuffer.objAddr,
 					GOTO_BOOTLOADER, 0);
 			delay(200);
-		}else{
+		} else {
 			Serial.println("Wrong address number!");
 		}
-	}
-	else
+	} else
 		Serial.println("Wrong theme number!");
 
 }
 // The loop function is called in an endless loop
 void loop() {
 //Add your repeated code here
-	Serial.println("***********************************");
-	Serial.println("  Choose your wanted operation:");
-	Serial.println(">>1: Read/write IC card");
-	Serial.println(">>2: Set channel of 433MHz ");
-	Serial.println(">>3: Set 433 19200/ch20 ");
-	Serial.println(">>4: Wireless unloading ");
-	Serial.println(">>5: Wireless uploading finished ");
-	Serial.println(">>6: Send commands to device ");
+	Serial.println(F("***********************************"));
+	Serial.println(F("  Choose your wanted operation: "));
+	Serial.println(F(">>1: Read/write IC card "));
+	Serial.println(F(">>2: Set channel of 433MHz "));
+	Serial.println(F(">>3: Set 433 19200/ch20 "));
+	Serial.println(F(">>4: Wireless unloading "));
+	Serial.println(F(">>5: Wireless uploading finished "));
+	Serial.println(F(">>6: Send commands to device "));
+	Serial.println(F(">>7: Read card context for Haishanghai "));
+	Serial.println(F(">>8: Card Setting for Haishanghai "));
 
 	while (Serial.available() == 0)
 		;
@@ -365,13 +590,99 @@ void loop() {
 			myComm.begin(commBRD);
 			myComm.sendCMD(0, 0, STOP_REPORT, 0);
 		} else if (temp == '6' || temp == 6) {
-			Serial.println("As format:themeAddr ObjAddr cmd dataH dataL(5 bytes in Hex)");
+			Serial.println(
+					"As format:themeAddr ObjAddr cmd dataH dataL(5 bytes in Hex)");
 			delay(1000);
-			while(Serial.available()<5);
+			while (Serial.available() < 5)
+				;
 			myComm.begin(commBRD);
-			myComm.sendCMD(Serial.read(), Serial.read(), Serial.read(), Serial.read()*256+Serial.read());
+			myComm.sendCMD(Serial.read(), Serial.read(), Serial.read(),
+					Serial.read() * 256 + Serial.read());
+		} else if (temp == '7' || temp == 7) {
+			Serial.println("Pls put your card");
+			while (readCard()){
+				delay(100);
+			}
+			Serial.println("Content is:");
+			delay(100);
+			displayCard();
+		} else if (temp == '8' || temp == 8) {
+			Serial.println("Pls put your card");
+			clearRC522Buffer(READ_BLOCK);
+			while (!mfrc522.PICC_IsNewCardPresent()){
+				delay(100);
+			}
+			while (!mfrc522.PICC_ReadCardSerial()){
+				delay(100);
+			}
+
+			Serial.print("Card UID:");    //Dump UID
+			for (byte i = 0; i < mfrc522.uid.size; i++) {
+				Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
+				Serial.print(mfrc522.uid.uidByte[i], HEX);
+			}
+			Serial.println("Put the setting parameters like below:");
+			Serial.println("-tP/G(type, default player,needed)\n"
+					"-nxx(xx:card number 1~8,default 1)\n"
+					"-cR/G/B(color,default red)\n"
+					"-pR/A(reset or active, default reset)\n"
+					"-lxx(xx:lifes, default 10)\n"
+					"-axx(xx:active level,default 1)\n"
+					"set a player card:-tP -n2 -cR (-l9 -a3)\n"
+					"set a GM card:-tG -pR");
+			while (Serial.available() == 0)
+				;
+			delay(100);
+			while (Serial.available()) {
+				if (Serial.read() == '-')
+					processCMD(Serial.read());
+			}
+			if (RC522ReadBuffer.fields.cardType == CARD_TYPE_GAME_MASTER) {
+				if (RC522ReadBuffer.fields.cardCmd == CARD_CMD_RESET_ME
+						|| RC522ReadBuffer.fields.cardCmd
+								== CARD_CMD_OPEN_DOOR) {
+
+				} else {
+					RC522ReadBuffer.fields.cardCmd = CARD_CMD_RESET_ME;
+				}
+				RC522ReadBuffer.fields.activeTimes=0xff;
+				RC522ReadBuffer.fields.cardColour=0xff;
+				RC522ReadBuffer.fields.cardNumber=0xff;
+				RC522ReadBuffer.fields.totleLifes=0xff;
+			} else if (RC522ReadBuffer.fields.cardType
+					== CARD_TYPE_NORMAL_PLAYER) {
+				if (RC522ReadBuffer.fields.activeTimes == 0xff) {
+					RC522ReadBuffer.fields.activeTimes = 1;
+				}
+				if (RC522ReadBuffer.fields.cardColour == 0xff) {
+					RC522ReadBuffer.fields.cardColour = CARD_COLOR_RED;
+				}
+				if (RC522ReadBuffer.fields.cardNumber == 0xff) {
+					RC522ReadBuffer.fields.cardNumber = 1;
+				}
+				if (RC522ReadBuffer.fields.totleLifes == 0xff) {
+					RC522ReadBuffer.fields.totleLifes = 10;
+				}
+				RC522ReadBuffer.fields.cardCmd=0xff;
+			}else{
+				Serial.println("Must setting -t(Type)");
+				break;
+			}
+			if(mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A,
+					READ_BLOCK, &key, &(mfrc522.uid))!=1){
+				Serial.println("Authenticate error!");
+			}else{
+				if(mfrc522.MIFARE_Write(READ_BLOCK, &RC522ReadBuffer.BYTES[0], 16)!=1){
+					Serial.println("Write error!");
+				}else{
+					Serial.println("Successfully to set card as:");
+					displayCard();
+				}
+			}
+
 		}
 
 		Serial.flush();
 	}
+	setup();
 }
